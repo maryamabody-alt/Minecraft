@@ -223,12 +223,6 @@
             position: relative;
             z-index: 1;
         }
-        .error-message {
-            color: #ff6b6b;
-            font-size: 13px;
-            margin-top: 8px;
-            display: none;
-        }
     </style>
 </head>
 <body>
